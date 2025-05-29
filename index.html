@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Form and D3 Visualization</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 60px;
+      background-color: #F5F5F5;
+      box-sizing: border-box;
+    }
+
+    .container {
+      display: flex;
+      gap: 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .form-container {
+      width: 33%;
+      padding: 24px;
+    }
+
+    .form-container label {
+      display: block;
+      margin: 0.5em 0;
+      padding: 10px;
+    }
+
+    .vis-container {
+      width: 67%;
+      border-left: 1px solid #ccc;
+      padding: 10px;
+    }
+
+    svg {
+      border: 1px solid #ddd;
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="form-container">
+      <form id="data-form">
+        <label>Date <input type="date" name="date" required /></label>
+        <label>Size <input type="number" name="size" required /></label>
+        <label>Capacity <input type="number" name="capacity" required /></label>
+        <label>Location
+          <select name="location" required>
+            <option value="North">North</option>
+            <option value="South">South</option>
+            <option value="East">East</option>
+            <option value="West">West</option>
+          </select>
+        </label>
+        <label>Cost ($k) <input type="number" name="cost" step="0.01" required /></label>
+        <label>Interest (%) <input type="number" name="interest" step="0.01" /></label>
+        <label>Degradation (%) <input type="number" name="degradation" step="0.01" /></label>
+        <label>Min Charge <input type="number" name="minCharge" /></label>
+        <label>Max Charge <input type="number" name="maxCharge" /></label>
+        <button type="submit">Submit</button>
+      </form>
+    </div>
+
+    <!-- <div class="vis-container" id="vis-container"></div> -->
+    <div class="vis-container" id="my_dataviz"></div>
+  </div>
+
+  <script src='battery-vis.js'></script>
+
+</body>
+</html>
