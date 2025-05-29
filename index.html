@@ -3,8 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Form and D3 Visualization</title>
+  <title>pmck / Battery Arbitrage</title>
+  <!-- <link rel="icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="favicon.ico"> -->
+
   <script src="https://d3js.org/d3.v7.min.js"></script>
+  <!-- <base href="/battery-arbitrage/"> -->
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -21,21 +26,75 @@
       margin: 0 auto;
     }
 
-    .form-container {
-      width: 33%;
-      padding: 24px;
+    .form-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 10px 0;
     }
 
-    .form-container label {
-      display: block;
-      margin: 0.5em 0;
-      padding: 10px;
+    .form-row label {
+      flex: 1;
+      margin-right: 10px;
+      text-align: left;
+    }
+
+    .form-row input,
+    .form-row select {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      text-align: right;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      border: none;
+      background-color: #007BFF;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
     }
 
     .vis-container {
       width: 67%;
       border-left: 1px solid #ccc;
       padding: 10px;
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+
+    .tab-button {
+      padding: 10px 20px;
+      cursor: pointer;
+      color: black;
+      background-color: #eee;
+      border: none;
+      outline: none;
+      font-size: 16px;
+    }
+
+    .tab-button.active {
+      background-color: white;
+      border-bottom: 2px solid #007BFF;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
     }
 
     svg {
@@ -48,31 +107,62 @@
 
   <div class="container">
     <div class="form-container">
-      <form id="data-form">
-        <label>Date <input type="date" name="date" required /></label>
-        <label>Size <input type="number" name="size" required /></label>
-        <label>Capacity <input type="number" name="capacity" required /></label>
-        <label>Location
+        <h2>Input battery specs</h2>
+      <form id="data-form" method="POST">
+        <div class="form-row"><label for="date">Date connected</label><input type="date" name="date" value="2025-01-01" required /></div>
+        <div class="form-row"><label for="size">Size (MWh)</label><input type="number" name="size" value="200" required /></div>
+        <div class="form-row"><label for="capacity">Capacity (MW)</label><input type="number" name="capacity" value="50" required /></div>
+        <div class="form-row"><label for="location">Location</label>
           <select name="location" required>
-            <option value="North">North</option>
-            <option value="South">South</option>
-            <option value="East">East</option>
-            <option value="West">West</option>
+            <option value="NSW">NSW</option>
+            <option value="QLD">QLD</option>
+            <option value="VIC">VIC</option>
+            <option value="SA">SA</option>
+            <option value="TAS">TAS</option>
           </select>
-        </label>
-        <label>Cost ($k) <input type="number" name="cost" step="0.01" required /></label>
-        <label>Interest (%) <input type="number" name="interest" step="0.01" /></label>
-        <label>Degradation (%) <input type="number" name="degradation" step="0.01" /></label>
-        <label>Min Charge <input type="number" name="minCharge" /></label>
-        <label>Max Charge <input type="number" name="maxCharge" /></label>
+        </div>
+        <div class="form-row"><label for="cost">Cost ($k)</label><input type="number" name="cost" value="30000" step="1" required /></div>
+        <div class="form-row"><label for="interest">Interest (%)</label><input type="number" name="interest" step="0.01" /></div>
+        <div class="form-row"><label for="degradation">Degradation (%)</label><input type="number" name="degradation" step="0.01" /></div>
+        <div class="form-row"><label for="minCharge">Min. Charge (%)</label><input type="number" value="0" step="1" name="minCharge" /></div>
+        <div class="form-row"><label for="maxCharge">Max. Charge (%)</label><input type="number" value="100" step="1" name="maxCharge" /></div>
         <button type="submit">Submit</button>
       </form>
     </div>
 
-    <!-- <div class="vis-container" id="vis-container"></div> -->
-    <div class="vis-container" id="my_dataviz"></div>
+    <div class="vis-container">
+        <div class="tabs">
+        <button class="tab-button active" onclick="showTab('tab1')">About</button>
+        <button class="tab-button" onclick="showTab('tab2')">Intraday</button>
+        <button class="tab-button" onclick="showTab('tab3')">Lifetime</button>
+      </div>
+
+      <div id="tab1" class="tab-content active">
+        <div id="info-tab" style="padding: 10px 20px;">
+            <p>Enter the battery specifications and press Submit.</p>
+        </div>
+      </div>
+      <div id="tab2" class="tab-content">
+        <div id="intraday_viz"></div>
+      </div>
+      <div id="tab3" class="tab-content">
+        <div id="revenue_viz"></div>
+      </div>
+    </div>
   </div>
 
+  <script>
+    function showTab(tabId) {
+      // Hide all content
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      // Remove active class from buttons
+      document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+      // Show selected content
+      document.getElementById(tabId).classList.add('active');
+      // Highlight selected button
+      event.target.classList.add('active');
+    }
+  </script>
   <script src='battery-vis.js'></script>
 
 </body>
