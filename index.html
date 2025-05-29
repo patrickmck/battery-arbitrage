@@ -139,7 +139,17 @@
 
       <div id="tab1" class="tab-content active">
         <div id="info-tab" style="padding: 10px 20px;">
-            <p>Enter the battery specifications and press Submit.</p>
+            <p>This is a simplified model of revenue recovery for an Australian grid-connected battery. Using the specifications input on the left, it calculates <i>N</i> = number periods per day<sup>1</sup> the battery can be run at full charge/discharge. It then finds the <i>N</i> highest- and lowest-priced<sup>2</sup> periods from each day, calculating the revenue and cost from discharging and charging (respectively) during those periods.</p>
+            <p>By making these calculations for each day from the connection date until present, it is able to very roughly estimate the net cumulative revenue that would have resulted from doing energy arbitrage with the hypothetical battery.</p>
+            <p>Future extension of the model will account for:</p>
+            <ul>
+                <li>Cost of debt and time value of money, to answer "how long until it's paid for itself?"</li>
+                <li>Battery degradation, to account for decreasing capacity as number of cycles increases.</li>
+            </ul>
+            <p>Click through the tabs above to see charts representing typical intra-day profiles for four days per year, and the lifetime revenue return given by battery arbitrage along with some extreme days of high/low revenue.</p>
+            <br>
+            <p style="font-size: 12px;">1. NB for convenience only dates after 1 Oct 2021, that is 5-minute settlement days, will be considered.</p>
+            <p style="font-size: 12px;">2. Currently has 'perfect foresight' but will soon be improved by using day-ahead projections for each day.</p>
         </div>
       </div>
       <div id="tab2" class="tab-content">
