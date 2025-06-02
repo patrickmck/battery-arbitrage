@@ -1,9 +1,9 @@
-const margin = { top: 20, right: 30, bottom: 30, left: 50 },
-      width = 800 - margin.left - margin.right,
-      height = 400 - margin.top - margin.bottom;
+const margin = { top: 20, right: 30, bottom: 30, left: 50 };
+const width = 800 - margin.left - margin.right;
+const height = 400 - margin.top - margin.bottom;
 
 function make_intraday_viz(data, dearest, cheapest) {
-    let intraday = d3.select("#intraday_viz")
+    let intraday = d3.select("#intraday_summer")
         .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
@@ -16,7 +16,7 @@ function make_intraday_viz(data, dearest, cheapest) {
                 .range([0, width]);
 
     let y = d3.scaleLinear()
-                .domain([d3.min(data, d => d.Price), d3.max(data, d => d.Price)])
+                .domain([Math.min(0,d3.min(data, d => d.Price)), d3.max(data, d => d.Price)])
                 .nice()
                 .range([height, 0]);
 
