@@ -19,22 +19,31 @@ for file in file_list:
         raise Exception(f'Unexpected data shape {list(df.columns)} in file {file}')
     if df['PERIODTYPE'].unique() != ['TRADE']:
         raise Exception(f'Unexpected period type {df['PERIODTYPE'].unique()} in file {file}')
+    else:
+        df = df.drop(columns='PERIODTYPE')
     
     df_list.append(df)
     
 complete_data = pd.concat(df_list, ignore_index=True)
 
 # Dataframe housekeeping
-complete_data = complete_data.rename(columns={'SETTLEMENTDATE': 'SETTLEMENTPERIOD'})
-complete_data['SETTLEMENTPERIOD'] = pd.to_datetime(complete_data['SETTLEMENTPERIOD'])
-complete_data['DATE'] = complete_data['SETTLEMENTPERIOD'].dt.date
-region_list = complete_data['REGION'].unique()
+complete_data = complete_data.rename(columns={
+    'SETTLEMENTDATE': 'Period',
+    'REGION': 'Region',
+    'RRP': 'Price',
+    'TOTALDEMAND': 'Demand'
+})
+complete_data['Period'] = pd.to_datetime(complete_data['Period'])
+complete_data['Date'] = complete_data['Period'].dt.date
+complete_data['Time'] = complete_data['Period'].dt.time
+
+region_list = complete_data['Region'].unique()
 
 # Compare actual (Date, Region) pairs to expected range of such pairs
-date_region_index = pd.MultiIndex.from_product([complete_data['DATE'], region_list])
+date_region_index = pd.MultiIndex.from_product([complete_data['Date'], region_list])
 date_range = pd.date_range(
-    start=complete_data['DATE'].sort_values().iloc[0],
-    end=complete_data['DATE'].sort_values().iloc[-1],
+    start=complete_data['Date'].sort_values().iloc[0],
+    end=complete_data['Date'].sort_values().iloc[-1],
     freq='D'
 )
 date_region_range = pd.MultiIndex.from_product([date_range.date, region_list])

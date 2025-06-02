@@ -2,8 +2,8 @@ const margin = { top: 20, right: 30, bottom: 30, left: 50 };
 const width = 800 - margin.left - margin.right;
 const height = 400 - margin.top - margin.bottom;
 
-function make_intraday_viz(data, dearest, cheapest) {
-    let intraday = d3.select("#intraday_summer")
+function make_intraday_viz(fig_name, data, dearest, cheapest) {
+    let intraday = d3.select(`#${fig_name}`)
         .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
@@ -148,7 +148,8 @@ fetch('./output.json')
     .then(response => response.json())
     .then(jsondata => {
         console.log(jsondata)
-        const intraday_data = jsondata.alldata;
+        const intraday_summer = jsondata.summer;
+        const intraday_winter = jsondata.winter;
         const dearest = jsondata.dearest;
         const cheapest = jsondata.cheapest;
         const revenue_data = jsondata.revenue;
@@ -162,7 +163,8 @@ fetch('./output.json')
             });
         });
 
-        make_intraday_viz(intraday_data, dearest, cheapest)
+        make_intraday_viz('intraday_summer', intraday_summer, dearest, cheapest)
+        make_intraday_viz('intraday_winter', intraday_winter, dearest, cheapest)
 
         const parseDate = d3.timeParse("%Y-%m-%d");
         revenue_data.forEach(d => {

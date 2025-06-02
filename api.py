@@ -3,61 +3,99 @@ from datetime import datetime as dt
 from pprint import pprint
 import json
 
-with open('misc/PRICE_AND_DEMAND_202003_QLD1.csv', 'r') as f:
-    data = pd.read_csv(f)
+# capacity = 100 # MWh
+# charge_rate = 50 # MW
 
-capacity = 100 # MWh
-charge_rate = 50 # MW
+def make_intraday_data(data, capacity, charge_rate, connection_date, region, intervals_per_hour):
+    # Consider only days since the battery was connected
+    connection_date = pd.to_datetime(connection_date).date()
+    data = data.loc[data['Date']>=connection_date]
+    
+    # How many intervals can the battery run at full rate
+    intervals_full_charge = int(intervals_per_hour*capacity/charge_rate)
+    mwh_per_interval = charge_rate / intervals_per_hour
 
-data = data.rename(columns={
-    'RRP': 'Price',
-    'TOTALDEMAND': 'Demand'
-})
+    # For each day, get N highest- and lowest-priced periods
+    prices_per_day = data.sort_values(['Period', 'Price'], ascending=[True, False]).groupby('Date')
+    dearest = prices_per_day.head(intervals_full_charge)
+    cheapest = prices_per_day.tail(intervals_full_charge)
+    print(dearest['Price'].mean())
+    print(cheapest['Price'].mean())
 
-data['Datetime'] = pd.to_datetime(data['SETTLEMENTDATE'])
-data['Date'] = data['Datetime'].dt.date
-data['Time'] = data['Datetime'].dt.time
-# Datetime strings for easier parsing in the JS script
-data['Datetime_str'] = data['Datetime'].astype(str)
+    # Determine costs and revenues per day for charging and discharging
+    dearest['revenue'] = round(dearest['Price']*mwh_per_interval, 2)
+    cheapest['cost'] = round(cheapest['Price']*mwh_per_interval, 2)
+    daily_revenue = dearest.groupby('Date')['revenue'].sum().reset_index()
+    daily_revenue['revenue'] = daily_revenue['revenue']
+    daily_costs = cheapest.groupby('Date')['cost'].sum().reset_index()
+    daily_costs['cost'] = daily_costs['cost']
+    # print(f"{daily_revenue=}")
+    # print(f"{daily_costs=}")
 
-intervals_per_hour = len(data['Time'].unique())/24
-op_periods = int(intervals_per_hour*capacity/charge_rate)
+    # Subtract costs from revenues to determine net revenue per day
+    daily_balance = daily_revenue.merge(daily_costs, how='outer', on='Date')
+    daily_balance['net'] = daily_balance['revenue'] - daily_balance['cost']
+    daily_balance['net_cumsum'] = daily_balance['net'].cumsum()
 
-data = data[['Datetime', 'Datetime_str', 'Date', 'Time', 'Demand', 'Price']]
+    # print(f"{daily_balance=}")
+
+    # Choose the 4 samples for intraday: highest/lowest revenue plus summer/winter
+    best_day = daily_balance[['Date', 'net']].sort_values(by='net').iloc[0]
+    worst_day = daily_balance[['Date', 'net']].sort_values(by='net').iloc[-1]
+    # print(f'{best_day=}')
+    # print(f'{worst_day=}')
+
+    # Format dates as strings for parsing in JS script
+    data['Period_str'] = data['Period'].astype(str)
+    dearest['Period_str'] = dearest['Period'].astype(str)
+    cheapest['Period_str'] = cheapest['Period'].astype(str)
+    daily_balance['Date_str'] = daily_balance['Date'].astype(str)
+
+    # Select summer and winter days, format for export
+    sample_year = '2025'
+    summer_day = pd.to_datetime(f'{sample_year}-04-15').date()
+    summer_data = None
+    winter_day = pd.to_datetime(f'{sample_year}-05-15').date()
+    winter_data = None
+    if summer_day in daily_balance['Date'].unique():
+        summer_json = data.loc[data['Date']==summer_day][['Period_str', 'Price']]\
+            .rename(columns={'Period_str': 'Datetime'}).to_dict(orient='records')
+
+    if winter_day in daily_balance['Date'].unique():
+        winter_json = data.loc[data['Date']==winter_day][['Period_str', 'Price']]\
+            .rename(columns={'Period_str': 'Datetime'}).to_dict(orient='records')
+
+    dearest_json = dearest[['Period_str', 'Price']].rename(columns={'Period_str': 'Datetime'}).to_dict(orient='records')
+    cheapest_json = cheapest[['Period_str', 'Price']].rename(columns={'Period_str': 'Datetime'}).to_dict(orient='records')
+    revenue_json = daily_balance[['Date_str', 'revenue', 'cost', 'net_cumsum']].rename(columns={'Date_str': 'Date'}).to_dict(orient='records')
+
+    # print(data.columns)
+    # data = data[['Period', 'Period_str', 'Date', 'Time', 'Price']]
+    
+
+    return {'summer': summer_json, 'winter': winter_json, 'dearest': dearest_json, 'cheapest': cheapest_json, 'revenue': revenue_json}
+
+
+
+
 # data = data.loc[data['Date']==data['Date'].unique()[1]]
 
-# For each day, get N highest and lowest
-dearest = data.sort_values(['Date', 'Price'], ascending=[True, False]).groupby('Date').head(op_periods)
-cheapest = data.sort_values(['Date', 'Price'], ascending=[True, True]).groupby('Date').head(op_periods)
-# print(dearest)
-# print(cheapest)
 
+input_data = pd.read_pickle('aggregate_data.pkl')
+output_data = make_intraday_data(input_data, 100, 40, '2025-04-01', 'QLD1', 12)
+pprint(output_data)
 
-mwh_per_interval = charge_rate / intervals_per_hour
-dearest['revenue'] = round(dearest['Price']*mwh_per_interval, 2)
-cheapest['cost'] = round(cheapest['Price']*mwh_per_interval, 2)
-daily_revenue = dearest.groupby('Date')['revenue'].sum().reset_index()
-daily_revenue['revenue'] = daily_revenue['revenue']*0.001
-daily_costs = cheapest.groupby('Date')['cost'].sum().reset_index()
-daily_costs['cost'] = daily_costs['cost']*0.001
+# data_json = output_data.loc[data['Date']==data['Date'].unique()[2]][['Datetime_str', 'Price']].rename(columns={'Datetime_str': 'Datetime'}).to_dict(orient='records')
+# dearest_json = dearest[['Datetime_str', 'Price']].rename(columns={'Datetime_str': 'Datetime'}).to_dict(orient='records')
+# cheapest_json = cheapest[['Datetime_str', 'Price']].rename(columns={'Datetime_str': 'Datetime'}).to_dict(orient='records')
+# revenue_json = daily_balance[['Date_str', 'revenue', 'cost', 'net_cumsum']].rename(columns={'Date_str': 'Date'}).to_dict(orient='records')
 
-daily_balance = daily_revenue.merge(daily_costs, how='outer', on='Date')
-daily_balance['net'] = daily_balance['revenue'] - daily_balance['cost']
-daily_balance['net_cumsum'] = daily_balance['net'].cumsum()
-daily_balance['Date_str'] = daily_balance['Date'].astype(str)
-# print(daily_balance)
+# output = {
+#     'alldata': data_json,
+#     'dearest': dearest_json,
+#     'cheapest': cheapest_json,
+#     'revenue': revenue_json
+# }
 
-data_json = data.loc[data['Date']==data['Date'].unique()[2]][['Datetime_str', 'Price']].rename(columns={'Datetime_str': 'Datetime'}).to_dict(orient='records')
-dearest_json = dearest[['Datetime_str', 'Price']].rename(columns={'Datetime_str': 'Datetime'}).to_dict(orient='records')
-cheapest_json = cheapest[['Datetime_str', 'Price']].rename(columns={'Datetime_str': 'Datetime'}).to_dict(orient='records')
-revenue_json = daily_balance[['Date_str', 'revenue', 'cost', 'net_cumsum']].rename(columns={'Date_str': 'Date'}).to_dict(orient='records')
-
-output = {
-    'alldata': data_json,
-    'dearest': dearest_json,
-    'cheapest': cheapest_json,
-    'revenue': revenue_json
-}
-pprint(output)
 with open('output.json', 'w') as f:
-    json.dump(output, f)
+    json.dump(output_data, f)
