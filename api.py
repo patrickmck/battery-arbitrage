@@ -7,8 +7,13 @@ import json
 # charge_rate = 50 # MW
 
 def make_intraday_data(data, capacity, charge_rate, connection_date, region, intervals_per_hour):
-    # Consider only days since the battery was connected
+    # Ensure connection_date is within the dataset
     connection_date = pd.to_datetime(connection_date).date()
+    data_date_range = [min(data['Date']), max(data['Date'])]
+    if data_date_range[0] > connection_date:
+        raise Exception(f'Date out of range. Earliest data is {data_date_range[0]}, connection date is {connection_date}')
+
+    # Consider only days since the battery was connected
     data = data.loc[data['Date']>=connection_date]
     
     # How many intervals can the battery run at full rate
@@ -52,11 +57,11 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, region, int
     daily_balance['Date_str'] = daily_balance['Date'].astype(str)
 
     # Select summer and winter days, format for export
-    sample_year = '2025'
-    summer_day = pd.to_datetime(f'{sample_year}-04-15').date()
-    summer_data = None
-    winter_day = pd.to_datetime(f'{sample_year}-05-15').date()
-    winter_data = None
+    sample_year = '2024'
+    summer_day = pd.to_datetime(f'{sample_year}-12-30').date()
+    summer_json = None
+    winter_day = pd.to_datetime(f'{sample_year}-06-30').date()
+    winter_json = None
     if summer_day in daily_balance['Date'].unique():
         summer_json = data.loc[data['Date']==summer_day][['Period_str', 'Price']]\
             .rename(columns={'Period_str': 'Datetime'}).to_dict(orient='records')
@@ -73,7 +78,15 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, region, int
     # data = data[['Period', 'Period_str', 'Date', 'Time', 'Price']]
     
 
-    return {'summer': summer_json, 'winter': winter_json, 'dearest': dearest_json, 'cheapest': cheapest_json, 'revenue': revenue_json}
+    return {
+        'summer': summer_json,
+        'summer_date': summer_day.strftime('%Y-%m-%d'),
+        'winter': winter_json,
+        'winter_date': winter_day.strftime('%Y-%m-%d'),
+        'dearest': dearest_json,
+        'cheapest': cheapest_json,
+        'revenue': revenue_json
+    }
 
 
 
@@ -82,8 +95,10 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, region, int
 
 
 input_data = pd.read_pickle('aggregate_data.pkl')
-output_data = make_intraday_data(input_data, 100, 40, '2025-04-01', 'QLD1', 12)
-pprint(output_data)
+output_data = make_intraday_data(input_data, 100, 40, '2024-04-01', 'QLD1', 12)
+# pprint(output_data)
+for k in output_data:
+    print(f'{k}: {'*' if output_data.get(k) else ' '}')
 
 # data_json = output_data.loc[data['Date']==data['Date'].unique()[2]][['Datetime_str', 'Price']].rename(columns={'Datetime_str': 'Datetime'}).to_dict(orient='records')
 # dearest_json = dearest[['Datetime_str', 'Price']].rename(columns={'Datetime_str': 'Datetime'}).to_dict(orient='records')

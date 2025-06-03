@@ -149,24 +149,40 @@ fetch('./output.json')
     .then(jsondata => {
         console.log(jsondata)
         const intraday_summer = jsondata.summer;
+        let intraday_summer_date = jsondata.summer_date;
         const intraday_winter = jsondata.winter;
+        let intraday_winter_date = jsondata.winter_date;
         const dearest = jsondata.dearest;
         const cheapest = jsondata.cheapest;
         const revenue_data = jsondata.revenue;
 
         // Parse date and convert price
+        const parseDate = d3.timeParse("%Y-%m-%d");
         const parseTime = d3.timeParse("%Y-%m-%d %H:%M:%S");
-        [intraday_data, dearest, cheapest].forEach(arr => {
+        [intraday_summer, intraday_winter, dearest, cheapest].forEach(arr => {
             arr.forEach(d => {
                 d.Datetime = parseTime(d.Datetime);
                 d.Price = +d.Price;
             });
         });
+        intraday_summer_date = parseDate(intraday_summer_date)
+        intraday_winter_date = parseDate(intraday_winter_date)
 
-        make_intraday_viz('intraday_summer', intraday_summer, dearest, cheapest)
-        make_intraday_viz('intraday_winter', intraday_winter, dearest, cheapest)
+        const is_same_day = function(d1, d2) {
+            return d1.getFullYear() === d2.getFullYear() &&
+                d1.getMonth() === d2.getMonth() &&
+                d1.getDate() === d2.getDate();
+        }
 
-        const parseDate = d3.timeParse("%Y-%m-%d");
+        // Filter dearest and cheapest for given summer and winter dates
+        const dearest_summer = dearest.filter(d => is_same_day(d.Datetime, intraday_summer_date));
+        const dearest_winter = dearest.filter(d => is_same_day(d.Datetime, intraday_winter_date));
+        const cheapest_summer = cheapest.filter(d => is_same_day(d.Datetime, intraday_summer_date));
+        const cheapest_winter = cheapest.filter(d => is_same_day(d.Datetime, intraday_winter_date));
+
+        make_intraday_viz('intraday_summer', intraday_summer, dearest_summer, cheapest_summer)
+        make_intraday_viz('intraday_winter', intraday_winter, dearest_winter, cheapest_winter)
+
         revenue_data.forEach(d => {
             d.Date = parseDate(d.Date);
             d.revenue = +d.revenue;
