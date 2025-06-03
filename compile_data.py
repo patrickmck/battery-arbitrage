@@ -53,4 +53,4 @@ if not missing_dates.empty:
 
 output_filename = 'aggregate_data.pkl'
 complete_data.to_pickle(output_filename)
-print(f'Saved to {output_filename}')
+print(f'Saved {round(os.path.getsize(output_filename)/1e6, 2)}MB to {output_filename}')
