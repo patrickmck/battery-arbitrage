@@ -226,13 +226,9 @@ let make_charts = function(jsondata) {
 const api_url = 'foobar'
 document.getElementById('data-form').addEventListener('submit', async function (e) {
     e.preventDefault();
-    const form = e.target;
-
-    // Create a FormData object from the form
-    const formData = new FormData(form);
-
-    // Optional: Convert FormData to a plain object
-    const data = Object.fromEntries(formData.entries());
+    let form = e.target;
+    let formData = new FormData(form);
+    let data = Object.fromEntries(formData.entries());
     console.log(data)
 
     // Send to your API (example with fetch)

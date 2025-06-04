@@ -6,7 +6,7 @@ import json
 # capacity = 100 # MWh
 # charge_rate = 50 # MW
 
-def make_intraday_data(data, capacity, charge_rate, connection_date, region, intervals_per_hour):
+def make_intraday_data(data, capacity, charge_rate, connection_date, construction_cost, region, intervals_per_hour):
     # Ensure connection_date is within the dataset
     connection_date = pd.to_datetime(connection_date).date()
     data_date_range = [min(data['Date']), max(data['Date'])]
@@ -31,9 +31,7 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, region, int
     dearest['revenue'] = (dearest['Price']*mwh_per_interval).round(2)
     cheapest['cost'] = (cheapest['Price']*mwh_per_interval).round(2)
     daily_revenue = dearest.groupby('Date')['revenue'].sum().reset_index()
-    daily_revenue['revenue'] = daily_revenue['revenue']
     daily_costs = cheapest.groupby('Date')['cost'].sum().reset_index()
-    daily_costs['cost'] = daily_costs['cost']
     # print(f"{daily_revenue=}")
     # print(f"{daily_costs=}")
 
@@ -41,6 +39,11 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, region, int
     daily_balance = daily_revenue.merge(daily_costs, how='outer', on='Date')
     daily_balance['net'] = daily_balance['revenue'] - daily_balance['cost']
     daily_balance['net_cumsum'] = daily_balance['net'].cumsum()
+    daily_balance['cost_remaining'] = construction_cost - daily_balance['net_cumsum']
+    
+    payback = daily_balance.loc[daily_balance['cost_remaining']<0, 'Date'].sort_values(ascending=True)
+    payback_date = payback.iloc[0] if len(payback)>0 else None
+    print(f'Paid back {payback_date}')
 
     # print(f"{daily_balance=}")
 
@@ -70,6 +73,7 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, region, int
         winter_json = data.loc[data['Date']==winter_day][['Period_str', 'Price']]\
             .rename(columns={'Period_str': 'Datetime'}).to_dict(orient='records')
 
+    # Format intraday highlights and revenue data for export
     dearest_json = dearest[['Period_str', 'Price']].rename(columns={'Period_str': 'Datetime'}).to_dict(orient='records')
     cheapest_json = cheapest[['Period_str', 'Price']].rename(columns={'Period_str': 'Datetime'}).to_dict(orient='records')
     revenue_json = daily_balance[['Date_str', 'revenue', 'cost', 'net_cumsum']].rename(columns={'Date_str': 'Date'}).to_dict(orient='records')
@@ -114,12 +118,16 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, region, int
             <td>${daily_balance['net_cumsum'].iloc[-1]:>16,.2f}</td>
         </tr>
         <tr>
-            <td>Battery Lifespan</td>
-            <td>{(data_date_range[1] - connection_date).days} days ({connection_date} to {data_date_range[1]})</td>
+            <td>Installed for</td>
+            <td>{(data_date_range[1] - connection_date).days} days\t({connection_date} to {data_date_range[1]})</td>
         </tr>
         <tr>
-            <td>Time to Paid Off</td>
-            <td>{(data_date_range[1] - connection_date).days} days</td>
+            <td>Profitable for</td>
+            <td>{f"{(payback_date - connection_date).days} days\t({payback_date} to {data_date_range[1]})" if payback_date else "-"}</td>
+        </tr>
+        <tr>
+            <td>{"Profit to date" if payback_date else "Costs remaining"}</td>
+            <td>${(-1 if payback_date else 1)*daily_balance['cost_remaining'].iloc[-1]:>16,.2f}</td>
         </tr>
     </table>
     """
@@ -133,6 +141,7 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, region, int
         'dearest': dearest_json,
         'cheapest': cheapest_json,
         'revenue': revenue_json,
+        'payback_date': payback_date.strftime('%Y-%m-%d') if payback_date else None,
         'summary_html': summary_html
     }
 
@@ -143,7 +152,7 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, region, int
 
 
 input_data = pd.read_pickle('aggregate_data.pkl')
-output_data = make_intraday_data(input_data, 100, 40, '2024-04-01', 'QLD1', 12)
+output_data = make_intraday_data(input_data, 100, 40, '2024-04-01', 10e6, 'QLD1', 12)
 # pprint(output_data)
 for k in output_data:
     print(f'{'✓' if output_data.get(k) else ' '} {k}')
