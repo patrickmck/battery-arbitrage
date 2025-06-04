@@ -79,7 +79,7 @@ function make_intraday_viz(fig_name, data, dearest, cheapest) {
     drawBars(cheapest, "green");
 }
 
-function make_revenue_summary(data) {
+function make_revenue_summary(data, payback_date, payback_amount) {
     let revenue_chart = d3.select("#revenue_viz")
         .append("svg")
         .attr("width", width + margin.left + margin.right)
@@ -93,7 +93,7 @@ function make_revenue_summary(data) {
                 .range([0, width]);
 
     let y = d3.scaleLinear()
-                .domain([d3.min(data, d => d.cost), d3.max(data, d => d.net_cumsum)])
+                .domain([d3.min(data, d => d.cost), Math.max(payback_amount, d3.max(data, d => d.net_cumsum))])
                 .nice()
                 .range([height, 0]);
 
@@ -123,6 +123,49 @@ function make_revenue_summary(data) {
         .attr("stroke", "steelblue")
         .attr("stroke-width", 2)
         .attr("d", line);
+
+    // Mark the profit line
+    revenue_chart.append("line")
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", y(payback_amount))
+        .attr("y2", y(payback_amount))
+        .attr("stroke", "#888")
+        .attr("stroke-width", 2)
+        .attr("stroke-dasharray", "4 2");
+
+    if (payback_date) {
+        // Mark the point at which battery paid back
+        let triangle = d3.symbol()
+            .type(d3.symbolTriangle)
+            .size(40)
+        revenue_chart.append("path")
+                .attr("d", triangle)
+                .attr("stroke", "black")
+                .attr("fill", "black")
+                .attr("transform", `translate(${x(payback_date)},${y(payback_amount)-10}) rotate(180)`);
+        let text_width = function(text) {
+            let tmp_svg = d3.select('body').append('svg');
+            let tmp_text = tmp_svg.append('text')
+                .attr('font-size', '12px')
+                .text(text);
+
+            let tmp_text_width = tmp_text.node().getBBox().width;
+            tmp_svg.remove();
+            return tmp_text_width
+        }
+        revenue_chart.append("text")
+            .text("Paid back")
+            .attr("font-size", "12px")
+            .attr("x", x(payback_date)-0.5*text_width("Paid back"))
+            .attr("y", y(payback_amount)-40);
+            
+        revenue_chart.append("text")
+            .text(payback_date.toDateString())
+            .attr("font-size", "12px")
+            .attr("x", x(payback_date)-0.5*text_width(payback_date.toDateString()))
+            .attr("y", y(payback_amount)-20);
+    }
 
     // Draw green revenue bars
     let bar_width = width / data.length
@@ -167,6 +210,8 @@ let make_charts = function(jsondata) {
     const revenue_data = jsondata.revenue;
     // Summary info
     const summary_html = jsondata.summary_html;
+    let payback_date = jsondata.payback_date;
+    const payback_amount = jsondata.payback_amount;
 
     // Remove placeholder text from the summary card and charts
     summary_placeholder.remove()
@@ -191,6 +236,7 @@ let make_charts = function(jsondata) {
     });
     intraday_summer_date = parseDate(intraday_summer_date)
     intraday_winter_date = parseDate(intraday_winter_date)
+    payback_date = parseDate(payback_date)
 
     const is_same_day = function(d1, d2) {
         return d1.getFullYear() === d2.getFullYear() &&
@@ -217,7 +263,7 @@ let make_charts = function(jsondata) {
     })
 
     // Add the new revenue chart
-    make_revenue_summary(revenue_data)
+    make_revenue_summary(revenue_data, payback_date, payback_amount)
 
     return 'OK'
 

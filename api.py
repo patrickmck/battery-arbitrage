@@ -142,6 +142,7 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, constructio
         'cheapest': cheapest_json,
         'revenue': revenue_json,
         'payback_date': payback_date.strftime('%Y-%m-%d') if payback_date else None,
+        'payback_amount': construction_cost,
         'summary_html': summary_html
     }
 
