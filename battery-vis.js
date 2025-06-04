@@ -2,6 +2,16 @@ const margin = { top: 20, right: 30, bottom: 30, left: 50 };
 const width = 800 - margin.left - margin.right;
 const height = 400 - margin.top - margin.bottom;
 
+// Populate the summary info, intraday and revenue charts with placeholder text
+const placeholder_html = '<i>Enter data and press submit to see results.</i>'
+let summary_placeholder = d3.selectAll("#info-summary")
+    .append("div")
+    .html(`<b>Summary Information</b><hr>${placeholder_html}`);
+
+let chart_placeholder = d3.selectAll(".chart-container")
+    .append("div")
+    .html(placeholder_html);
+
 function make_intraday_viz(fig_name, data, dearest, cheapest) {
     let intraday = d3.select(`#${fig_name}`)
         .append("svg")
@@ -70,8 +80,7 @@ function make_intraday_viz(fig_name, data, dearest, cheapest) {
 }
 
 function make_revenue_summary(data) {
-    console.log(data)
-    let rev = d3.select("#revenue_viz")
+    let revenue_chart = d3.select("#revenue_viz")
         .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
@@ -100,15 +109,15 @@ function make_revenue_summary(data) {
                     .y(d => y(d.net_cumsum));
 
     // Add axes
-    rev.append("g")
+    revenue_chart.append("g")
         .attr("transform", `translate(0,${height})`)
         .call(d3.axisBottom(x));
 
-    rev.append("g")
+    revenue_chart.append("g")
         .call(d3.axisLeft(y).tickFormat(d3.format(".2s")));
 
     // Draw line
-    rev.append("path")
+    revenue_chart.append("path")
         .datum(data)
         .attr("fill", "none")
         .attr("stroke", "steelblue")
@@ -117,7 +126,7 @@ function make_revenue_summary(data) {
 
     // Draw green revenue bars
     let bar_width = width / data.length
-    rev.selectAll(".rev-bar")
+    revenue_chart.selectAll(".rev-bar")
         .data(data)
         .enter()
         .append("rect")
@@ -130,7 +139,7 @@ function make_revenue_summary(data) {
         .attr("opacity", 0.3);
 
     // Draw red cost bars
-    rev.selectAll(".cost-bar")
+    revenue_chart.selectAll(".cost-bar")
         .data(data)
         .enter()
         .append("rect")
@@ -143,63 +152,77 @@ function make_revenue_summary(data) {
         .attr("opacity", 0.3);
 }
 
-// Load JSON data
-fetch('./output.json')
-    .then(response => response.json())
-    .then(jsondata => {
-        console.log(jsondata)
-        const intraday_summer = jsondata.summer;
-        let intraday_summer_date = jsondata.summer_date;
-        const intraday_winter = jsondata.winter;
-        let intraday_winter_date = jsondata.winter_date;
-        const dearest = jsondata.dearest;
-        const cheapest = jsondata.cheapest;
-        const revenue_data = jsondata.revenue;
-        const summary_html = jsondata.summary_html;
+// After receiving data from the API, populate the info summary
+// and populate the charts in the intraday and revenue tabs
+let make_charts = function(jsondata) {
+    // console.log(jsondata)
+    // Intraday data
+    const intraday_summer = jsondata.summer;
+    let intraday_summer_date = jsondata.summer_date;
+    const intraday_winter = jsondata.winter;
+    let intraday_winter_date = jsondata.winter_date;
+    // Revenue data
+    const dearest = jsondata.dearest;
+    const cheapest = jsondata.cheapest;
+    const revenue_data = jsondata.revenue;
+    // Summary info
+    const summary_html = jsondata.summary_html;
 
-        const summary_card = d3.select("#info-summary")
-            .append("div")
-            .html(summary_html);
+    // Remove placeholder text from the summary card and charts
+    summary_placeholder.remove()
+    chart_placeholder.remove()
+    // Remove any existing summary info or charts
+    d3.select("#info-summary").selectAll("div").remove();
+    d3.selectAll(".chart-container").selectAll("svg").remove();
 
-        // Parse date and convert price
-        const parseDate = d3.timeParse("%Y-%m-%d");
-        const parseTime = d3.timeParse("%Y-%m-%d %H:%M:%S");
-        [intraday_summer, intraday_winter, dearest, cheapest].forEach(arr => {
-            arr.forEach(d => {
-                d.Datetime = parseTime(d.Datetime);
-                d.Price = +d.Price;
-            });
+    // Add the new summary info
+    let summary_card = d3.select("#info-summary")
+        .append("div")
+        .html(summary_html);
+
+    // Parse date and convert price
+    const parseDate = d3.timeParse("%Y-%m-%d");
+    const parseTime = d3.timeParse("%Y-%m-%d %H:%M:%S");
+    [intraday_summer, intraday_winter, dearest, cheapest].forEach(arr => {
+        arr.forEach(d => {
+            d.Datetime = parseTime(d.Datetime);
+            d.Price = +d.Price;
         });
-        intraday_summer_date = parseDate(intraday_summer_date)
-        intraday_winter_date = parseDate(intraday_winter_date)
-
-        const is_same_day = function(d1, d2) {
-            return d1.getFullYear() === d2.getFullYear() &&
-                d1.getMonth() === d2.getMonth() &&
-                d1.getDate() === d2.getDate();
-        }
-
-        // Filter dearest and cheapest for given summer and winter dates
-        const dearest_summer = dearest.filter(d => is_same_day(d.Datetime, intraday_summer_date));
-        const dearest_winter = dearest.filter(d => is_same_day(d.Datetime, intraday_winter_date));
-        const cheapest_summer = cheapest.filter(d => is_same_day(d.Datetime, intraday_summer_date));
-        const cheapest_winter = cheapest.filter(d => is_same_day(d.Datetime, intraday_winter_date));
-
-        make_intraday_viz('intraday_summer', intraday_summer, dearest_summer, cheapest_summer)
-        make_intraday_viz('intraday_winter', intraday_winter, dearest_winter, cheapest_winter)
-
-        revenue_data.forEach(d => {
-            d.Date = parseDate(d.Date);
-            d.revenue = +d.revenue;
-            d.cost = +d.cost;
-            d.net = +d.net;
-            d.net_cumsum = +d.net_cumsum;
-        })
-
-        make_revenue_summary(revenue_data)
-
     });
-/**
+    intraday_summer_date = parseDate(intraday_summer_date)
+    intraday_winter_date = parseDate(intraday_winter_date)
+
+    const is_same_day = function(d1, d2) {
+        return d1.getFullYear() === d2.getFullYear() &&
+            d1.getMonth() === d2.getMonth() &&
+            d1.getDate() === d2.getDate();
+    }
+
+    // Filter dearest and cheapest for given summer and winter dates
+    const dearest_summer = dearest.filter(d => is_same_day(d.Datetime, intraday_summer_date));
+    const dearest_winter = dearest.filter(d => is_same_day(d.Datetime, intraday_winter_date));
+    const cheapest_summer = cheapest.filter(d => is_same_day(d.Datetime, intraday_summer_date));
+    const cheapest_winter = cheapest.filter(d => is_same_day(d.Datetime, intraday_winter_date));
+
+    // Add the new intraday charts
+    make_intraday_viz('intraday_summer', intraday_summer, dearest_summer, cheapest_summer);
+    make_intraday_viz('intraday_winter', intraday_winter, dearest_winter, cheapest_winter);
+
+    revenue_data.forEach(d => {
+        d.Date = parseDate(d.Date);
+        d.revenue = +d.revenue;
+        d.cost = +d.cost;
+        d.net = +d.net;
+        d.net_cumsum = +d.net_cumsum;
+    })
+
+    // Add the new revenue chart
+    make_revenue_summary(revenue_data)
+
+    return 'OK'
+
+};
+
 const api_url = 'foobar'
 document.getElementById('data-form').addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -214,18 +237,22 @@ document.getElementById('data-form').addEventListener('submit', async function (
 
     // Send to your API (example with fetch)
     try {
-        const response = await fetch(api_url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        });
+        // let response = await fetch(api_url, {
+        //     method: 'POST',
+        //     headers: {
+        //         'Content-Type': 'application/json'
+        //     },
+        //     body: JSON.stringify(data)
+        // });
 
-        const result = await response.json();
-        console.log('Server response:', result);
+        let response = await fetch('./output.json')
+            .then(data => data.json())
+            .then(jsondata => make_charts(jsondata))
+
+        console.log('Server response:', response);
+
+
     } catch (error) {
         console.error('Error submitting form:', error);
     }
 });
- */

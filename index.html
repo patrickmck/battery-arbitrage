@@ -105,6 +105,23 @@
       padding: 30px
     }
 
+    .summary-table {
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+
+    .summary-table td {
+      padding: 6px 12px;
+      vertical-align: top;
+      align-content: right;
+      white-space: pre-wrap
+    }
+    .summary-table col {
+      width: 2000px
+    }
+
     svg {
       border: 1px solid #ddd;
       background-color: #f9f9f9;
@@ -163,12 +180,13 @@
       </div>
       <div id="tab2" class="tab-content">
         <h3>Summer 2024</h3>
-        <div id="intraday_summer"></div>
+        <div class="chart-container" id="intraday_summer"></div>
         <h3>Winter 2024</h3>
-        <div id="intraday_winter"></div>
+        <div class="chart-container" id="intraday_winter"></div>
       </div>
       <div id="tab3" class="tab-content">
-        <div id="revenue_viz"></div>
+        <h3>Lifetime daily revenue</h3>
+        <div class="chart-container" id="revenue_viz"></div>
       </div>
     </div>
   </div>

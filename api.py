@@ -77,14 +77,53 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, region, int
     # print(data.columns)
     # data = data[['Period', 'Period_str', 'Date', 'Time', 'Price']]
 
-    summary_html = f"\
-<p>Per day, average charge costs were {daily_balance['cost'].mean():,.2f} \
-and average discharge revenue was {daily_balance['revenue'].mean():,.2f} \
-for an average net revenue of ${daily_balance['net'].mean():.2f}.</p><br/>\
-<p>Over the {(data_date_range[1]-connection_date).days} day life span of the \
-battery from {connection_date} to {data_date_range[1]}, this would have returned \
-${daily_balance['net_cumsum'].iloc[-1]:,.2f} in total net revenue.</p>"
-    print(summary_html)
+    # Revenue numbers in summary text padded to 16 digits, assumed <= $9.9B
+    summary_html = f"""
+    <b>Summary Information</b><hr>
+    <table class="summary-table">
+        <tr>
+            <td>Charge per interval</td>
+            <td>{mwh_per_interval:,.2f} MWh</td>
+        </tr>
+        <tr>
+            <td>Intervals per day</td>
+            <td>{intervals_full_charge} charge, {intervals_full_charge} discharge</td>
+        </tr>
+        <tr>
+            <td>Avg. Cost per day</td>
+            <td>${daily_balance['cost'].mean():>16,.2f}</td>
+        </tr>
+        <tr>
+            <td>          per interval</td>
+            <td>${cheapest['cost'].mean():>16,.2f}</td>
+        </tr>
+        <tr>
+            <td>Avg. Revenue per day</td>
+            <td>${daily_balance['revenue'].mean():>16,.2f}</td>
+        </tr>
+        <tr>
+            <td>             per interval</td>
+            <td>${dearest['revenue'].mean():>16,.2f}</td>
+        </tr>
+        <tr style="border-top: 2px solid black;">
+            <td>Avg. Net Revenue per day</td>
+            <td>${daily_balance['net'].mean():>16,.2f}</td>
+        </tr>
+        <tr style="border-bottom: 2px solid black;">
+            <td>Total Net Revenue</td>
+            <td>${daily_balance['net_cumsum'].iloc[-1]:>16,.2f}</td>
+        </tr>
+        <tr>
+            <td>Battery Lifespan</td>
+            <td>{(data_date_range[1] - connection_date).days} days ({connection_date} to {data_date_range[1]})</td>
+        </tr>
+        <tr>
+            <td>Time to Paid Off</td>
+            <td>{(data_date_range[1] - connection_date).days} days</td>
+        </tr>
+    </table>
+    """
+    # print(summary_html)
 
     return {
         'summer': summer_json,
