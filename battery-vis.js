@@ -105,7 +105,7 @@ function make_revenue_summary(data) {
         .call(d3.axisBottom(x));
 
     rev.append("g")
-        .call(d3.axisLeft(y));
+        .call(d3.axisLeft(y).tickFormat(d3.format(".2s")));
 
     // Draw line
     rev.append("path")
@@ -155,6 +155,11 @@ fetch('./output.json')
         const dearest = jsondata.dearest;
         const cheapest = jsondata.cheapest;
         const revenue_data = jsondata.revenue;
+        const summary_html = jsondata.summary_html;
+
+        const summary_card = d3.select("#info-summary")
+            .append("div")
+            .html(summary_html);
 
         // Parse date and convert price
         const parseDate = d3.timeParse("%Y-%m-%d");

@@ -14,22 +14,22 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, region, int
         raise Exception(f'Date out of range. Earliest data is {data_date_range[0]}, connection date is {connection_date}')
 
     # Consider only days since the battery was connected
-    data = data.loc[data['Date']>=connection_date]
+    data = data.loc[data['Date']>=connection_date].copy()
     
     # How many intervals can the battery run at full rate
     intervals_full_charge = int(intervals_per_hour*capacity/charge_rate)
     mwh_per_interval = charge_rate / intervals_per_hour
 
     # For each day, get N highest- and lowest-priced periods
-    prices_per_day = data.sort_values(['Period', 'Price'], ascending=[True, False]).groupby('Date')
-    dearest = prices_per_day.head(intervals_full_charge)
-    cheapest = prices_per_day.tail(intervals_full_charge)
-    print(dearest['Price'].mean())
-    print(cheapest['Price'].mean())
+    prices_per_day = data.sort_values(['Date', 'Price'], ascending=[True, False]).groupby('Date')
+    dearest = prices_per_day.head(intervals_full_charge).copy()
+    cheapest = prices_per_day.tail(intervals_full_charge).copy()
+    print(f'Average price top {intervals_full_charge} intervals: {dearest['Price'].mean():.2f}')
+    print(f'Average price bottom {intervals_full_charge} intervals: {cheapest['Price'].mean():.2f}')
 
     # Determine costs and revenues per day for charging and discharging
-    dearest['revenue'] = round(dearest['Price']*mwh_per_interval, 2)
-    cheapest['cost'] = round(cheapest['Price']*mwh_per_interval, 2)
+    dearest['revenue'] = (dearest['Price']*mwh_per_interval).round(2)
+    cheapest['cost'] = (cheapest['Price']*mwh_per_interval).round(2)
     daily_revenue = dearest.groupby('Date')['revenue'].sum().reset_index()
     daily_revenue['revenue'] = daily_revenue['revenue']
     daily_costs = cheapest.groupby('Date')['cost'].sum().reset_index()
@@ -51,9 +51,9 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, region, int
     # print(f'{worst_day=}')
 
     # Format dates as strings for parsing in JS script
-    data['Period_str'] = data['Period'].astype(str)
-    dearest['Period_str'] = dearest['Period'].astype(str)
-    cheapest['Period_str'] = cheapest['Period'].astype(str)
+    data['Period_str'] = data['Period'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    dearest['Period_str'] = dearest['Period'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    cheapest['Period_str'] = cheapest['Period'].dt.strftime('%Y-%m-%d %H:%M:%S')
     daily_balance['Date_str'] = daily_balance['Date'].astype(str)
 
     # Select summer and winter days, format for export
@@ -76,7 +76,15 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, region, int
 
     # print(data.columns)
     # data = data[['Period', 'Period_str', 'Date', 'Time', 'Price']]
-    
+
+    summary_html = f"\
+<p>Per day, average charge costs were {daily_balance['cost'].mean():,.2f} \
+and average discharge revenue was {daily_balance['revenue'].mean():,.2f} \
+for an average net revenue of ${daily_balance['net'].mean():.2f}.</p><br/>\
+<p>Over the {(data_date_range[1]-connection_date).days} day life span of the \
+battery from {connection_date} to {data_date_range[1]}, this would have returned \
+${daily_balance['net_cumsum'].iloc[-1]:,.2f} in total net revenue.</p>"
+    print(summary_html)
 
     return {
         'summer': summer_json,
@@ -85,7 +93,8 @@ def make_intraday_data(data, capacity, charge_rate, connection_date, region, int
         'winter_date': winter_day.strftime('%Y-%m-%d'),
         'dearest': dearest_json,
         'cheapest': cheapest_json,
-        'revenue': revenue_json
+        'revenue': revenue_json,
+        'summary_html': summary_html
     }
 
 
@@ -98,7 +107,7 @@ input_data = pd.read_pickle('aggregate_data.pkl')
 output_data = make_intraday_data(input_data, 100, 40, '2024-04-01', 'QLD1', 12)
 # pprint(output_data)
 for k in output_data:
-    print(f'{k}: {'*' if output_data.get(k) else ' '}')
+    print(f'{'✓' if output_data.get(k) else ' '} {k}')
 
 # data_json = output_data.loc[data['Date']==data['Date'].unique()[2]][['Datetime_str', 'Price']].rename(columns={'Datetime_str': 'Datetime'}).to_dict(orient='records')
 # dearest_json = dearest[['Datetime_str', 'Price']].rename(columns={'Datetime_str': 'Datetime'}).to_dict(orient='records')
