@@ -198,7 +198,7 @@ function make_revenue_summary(data, payback_date, payback_amount) {
 // After receiving data from the API, populate the info summary
 // and populate the charts in the intraday and revenue tabs
 let make_charts = function(jsondata) {
-    // console.log(jsondata)
+    console.log(`Data: ${jsondata}`)
     // Intraday data
     const intraday_summer = jsondata.summer;
     let intraday_summer_date = jsondata.summer_date;
@@ -225,7 +225,7 @@ let make_charts = function(jsondata) {
         .append("div")
         .html(summary_html);
 
-    // Parse date and convert price
+    // Parse dates and convert price
     const parseDate = d3.timeParse("%Y-%m-%d");
     const parseTime = d3.timeParse("%Y-%m-%d %H:%M:%S");
     [intraday_summer, intraday_winter, dearest, cheapest].forEach(arr => {
@@ -269,29 +269,28 @@ let make_charts = function(jsondata) {
 
 };
 
-const api_url = 'foobar'
+const api_url = 'https://1g5rky7tjj.execute-api.ap-southeast-2.amazonaws.com/v1'
 document.getElementById('data-form').addEventListener('submit', async function (e) {
     e.preventDefault();
     let form = e.target;
     let formData = new FormData(form);
-    let data = Object.fromEntries(formData.entries());
-    console.log(data)
+    let query = Object.fromEntries(formData.entries());
+    console.log(`Query: ${JSON.stringify(query)}`)
+    let params = new URLSearchParams(query)
+    query_url = `${api_url}/product?${params}`
+    console.log(query_url)
 
-    // Send to your API (example with fetch)
     try {
-        // let response = await fetch(api_url, {
-        //     method: 'POST',
-        //     headers: {
-        //         'Content-Type': 'application/json'
-        //     },
-        //     body: JSON.stringify(data)
-        // });
-
-        let response = await fetch('./output.json')
+        let response_final = await fetch(`${api_url}`, {method: 'GET'})
+            .then((response) => console.log(response))
             .then(data => data.json())
-            .then(jsondata => make_charts(jsondata))
+            .then(jsondata => make_charts(jsondata));
 
-        console.log('Server response:', response);
+        // let response = await fetch('./output.json')
+        //     .then(data => data.json())
+        //     .then(jsondata => make_charts(jsondata))
+
+        // console.log('Server response:', response);
 
 
     } catch (error) {
